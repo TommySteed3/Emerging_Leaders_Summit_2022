@@ -1,0 +1,128 @@
+---
+title: "R is for Storytelling"
+output:
+  html_document:
+    df_print: paged
+---
+
+This document is an example of how R Markdown can be used in the storytelling process.  You would use an R Markdown report after your analysis is done and you are ready to report results to your stakeholder(s).  Think of Markdown like you currently think of Word, PowerPoint, or even PDFs.  An R Markdown document is created using R - but once it is knitted to an HTML document, the end-user does not need R to read.
+
+
+
+```{r message=FALSE, echo=FALSE, fig.align='center', warning=FALSE}
+
+library(data.table)
+library(ggplot2)
+library(dplyr)
+library(plotly)
+library(gganimate)
+library(viridis)  
+
+options(scipen = 999)
+
+
+df.mort <- fread('Final_Data.csv')
+
+df.agg <- df.mort %>%
+  group_by(duration) %>%
+  filter(duration < 26) %>%
+  summarise(actual.count = sum(number_of_deaths),
+            expected.count = sum(expected.count),
+            actual.face = sum(death_claim_amount),
+            expected.face = sum(expected.face)) %>%
+  mutate(ae.count = actual.count/expected.count,
+         ae.face = actual.face/expected.face)
+
+
+
+
+```
+
+
+# Dual Axis Graph Using Plotly  
+In our Shiny dashboard, we had exposure and A to E in separate graphs for ease of implementation.  If we decide to present both these metrics as part of our data story, we might consider a more polished dual axis graph using plot_ly in place of ggplot:  
+
+```{r message=FALSE, echo=FALSE, fig.align='center', warning=FALSE}
+
+
+plot_ly(df.agg, x = ~duration, y = ~actual.count, type = "bar", name = "Deaths") %>%
+  add_trace(x = ~duration, y = ~ae.count, type = "scatter", mode = "lines", yaxis = "y2", name = "Lapse Rate") %>%
+  layout(yaxis2 = list(overlaying = "y", side = "right"))
+
+
+
+```
+
+
+
+# ANIMATED CHARTS  
+There is an unlimited selection of visualizations available.  For the final presentation, spend time finalizing a powerful graph that grabs the audience's attention.  One example might be an animated grah.
+
+**Business Mix by Issue Age and Face Amount**
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+
+
+cbbPalette <- c("#000000", "#E69F00", "#D55E00", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+
+df.mort2 <- df.mort %>%
+  filter(issue_year > 2000)
+
+i <- ggplot(df.mort2,aes(x = issue_age, y = amount_exposed,color = insurance_plan)) + 
+ geom_point(size = 0.1, stroke = 0, shape = 16) + geom_jitter(width = .0005, height = .0005)  +
+  xlab("ISSUE AGE") +
+  ylab("EXPOSURE") + scale_colour_manual(values=cbbPalette) +
+  theme(legend.position = "bottom")
+
+
+anim3 <- i + 
+  transition_states(issue_year,
+                    transition_length = 0,
+                    state_length = 1) +
+   ease_aes('cubic-in-out') +
+   ggtitle('Now showing {closest_state}')
+
+```
+
+
+```{r message=FALSE, echo=FALSE, fig.align='center', warning=FALSE}
+
+
+animate(anim3,duration = 10,nframes = 100)
+#gg_animate(i)
+
+```
+
+
+# GGPLOT + PLOTLY
+Using ggplot + plotly is still a powerful option.  You can use charts that you choose from your prior analysis.  
+
+**Business Mix by Policy Year**
+
+```{r message=FALSE, echo=FALSE, fig.align='center', warning=FALSE}
+
+df.agg2 <- df.mort %>%
+  group_by(issue_year, insurance_plan) %>%
+  filter(insurance_plan %in% c('Term','Perm')) %>%
+  filter(issue_year > 1988) %>%
+  summarise(exposure = sum(policies_exposed))
+
+
+h <- ggplot(df.agg2, aes(x = issue_year, y = exposure, color = insurance_plan, group = insurance_plan)) + geom_line() + geom_point() + xlab('Duration') + ylab('Actual to Expected') + ggtitle('Experience by Duration - All Products')
+ggplotly(h)
+
+
+```
+
+
+# Latex For Mathematical Formulas
+Another benefit of using Markdown over Word or PowerPoint is the ability to use Latex to render mathematical formulas.  Once you master a few basic equations, you can repurpose for almost any need.  
+
+**Sample Syntax**
+$Lapse\ Rate\  =\ e^{\beta_1x_1}\ *\ e^{\beta_2x_2}\ *\ e^{\beta_3x_3}\ *\ e^{\beta_4x_4}\  *\ e^{\beta_5x_5}\ *\ e^{\beta_6x_6}\ *\ e^{\beta_7x_7}\ *\ e^{\beta_8x_8}\ $
+
+
+# APPENDIX  
+
+LINK TO DASHBOARD: MORE DETAILS CAN BE FOUND HERE.
